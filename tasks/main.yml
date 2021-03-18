@@ -1,0 +1,52 @@
+---
+- name: 'Install Samba Packages'
+  apt:
+    name: "{{ packages }}"
+    state: "present"
+  vars:
+    packages:
+      - 'krb5-user'
+      - 'krb5-config'
+      - 'winbind'
+      - 'libnss-winbind'
+      - 'libpam-winbind'
+      - 'samba'
+      - 'cifs-utils'
+      - 'smbclient'
+
+- name: 'Configure Kerberos'
+  template:
+    src: 'krb5.conf'
+    dest: '/etc/krb5.conf'
+
+- name: 'Configure name service switch'
+  copy:
+    src: 'nsswitch.conf'
+    dest: '/etc/nsswitch.conf'
+
+- name: 'Configure global samba settings'
+  template:
+    src:  "{{ inventory_dir }}/group_vars/samba/templates/smb.conf"
+    dest: '/etc/samba/smb.conf'
+  notify: 'samba_restart'
+
+- name: 'Configure samba shares'
+  template:
+    src:  "{{ inventory_dir }}/host_vars/{{ inventory_hostname }}/templates/smb.conf"
+    dest: "/etc/samba/shares.conf"
+  notify: 'samba_restart'
+
+- name: 'Check domain status'
+  command: 'net ads testjoin -k'
+  register: 'domain'
+
+- name: 'Join domain'
+  command: "net join -U {{ samba_domain_admin.user }}%{{ samba_domain_admin.pass }}"
+  no_log: True
+  when: 'domain.stdout != "Join is OK"'
+
+- name: "Configure the firewall"
+  ufw:
+    rule: "allow"
+    name: "Samba"
+...
