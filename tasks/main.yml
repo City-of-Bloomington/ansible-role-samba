@@ -37,7 +37,8 @@
   notify: 'samba_restart'
 
 - name: 'Check domain status'
-  command: 'net ads testjoin -k'
+  ansible.builtin.command: 'net ads testjoin'
+  ignore_errors: 'true'
   register: 'domain'
 
 - name: 'Join domain'
